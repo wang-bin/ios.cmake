@@ -110,42 +110,48 @@ endif()
 # Determine the platform name and architectures for use in xcodebuild commands
 # CMAKE_OSX_SYSROOT: appletvos, appletvsimullator, watchos, watch.....
 if (IOS_DEVICE)
-  set(IOS_SYSROOT iphoneos)
+  set(IOS_SDK iphoneos)
   set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos")
 elseif (IOS_SIMULATOR)
-  set(IOS_SYSROOT iphonesimulator)
+  set(IOS_SDK iphonesimulator)
   set(IOS_BITCODE 0)
   set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphonesimulator")
 elseif(IOS_UNIVERSAL)
-  set(IOS_SYSROOT iphoneos)
+  set(IOS_SDK iphoneos)
   set(IOS_BITCODE 0)
   set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos;-iphonesimulator")
 endif()
 
-message(STATUS "Configuring iOS build for platform: ${IOS_SYSROOT}, architecture(s): ${IOS_ARCH}")
+message(STATUS "Configuring iOS build for platform: ${IOS_SDK}, architecture(s): ${IOS_ARCH}")
 # Get the SDK version information.
+if (NOT DEFINED IOS_SDK_PATH)
+  execute_process(COMMAND xcrun -sdk ${IOS_SDK} --show-sdk-path
+    OUTPUT_VARIABLE IOS_SDK_PATH
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
 if (NOT DEFINED IOS_SDK_VERSION)
-  execute_process(COMMAND xcodebuild -sdk ${IOS_SYSROOT} -version SDKVersion
+  execute_process(COMMAND xcrun -sdk ${IOS_SDK} --show-sdk-version
     OUTPUT_VARIABLE IOS_SDK_VERSION
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 if (NOT DEFINED CMAKE_C_COMPILER)
-  execute_process(COMMAND xcrun -sdk ${IOS_SYSROOT} -find clang
+  execute_process(COMMAND xcrun -sdk ${IOS_SDK} -find clang
     OUTPUT_VARIABLE CMAKE_C_COMPILER
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   message(STATUS "Using C compiler: ${CMAKE_C_COMPILER}")
 endif()
 if (NOT DEFINED CMAKE_CXX_COMPILER)
-  execute_process(COMMAND xcrun -sdk ${IOS_SYSROOT} -find clang++
+  execute_process(COMMAND xcrun -sdk ${IOS_SDK} -find clang++
     OUTPUT_VARIABLE CMAKE_CXX_COMPILER
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   message(STATUS "Using CXX compiler: ${CMAKE_CXX_COMPILER}")
 endif()
 if (NOT DEFINED IOS_LIBTOOL)
-  execute_process(COMMAND xcrun -sdk ${IOS_SYSROOT} -find libtool
+  execute_process(COMMAND xcrun -sdk ${IOS_SDK} -find libtool
     OUTPUT_VARIABLE IOS_LIBTOOL
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -188,7 +194,8 @@ message("IOS_EMBEDDED_FRAMEWORK: ${IOS_EMBEDDED_FRAMEWORK}")
 macro(set_xarch_flags arch)
   unset(XARCH_VERSION_FLAGS)
   set(XARCH_VERSION_FLAGS "${XARCH_VERSION_FLAGS} -Xarch_${arch}")
-  if("${arch}" MATCHES ".*arm.*")
+  #set(arch "${arch}")
+  if("${arch}" MATCHES ".*arm.*") # macro arguments are not variables. call set(arch "${arch}") to use if(arch MATCHES ...)
     set(XARCH_SDK iphoneos)
     set(XARCH_OS iphoneos)
     if (XCODE_VERSION VERSION_LESS 7.0)
@@ -209,7 +216,7 @@ macro(set_xarch_flags arch)
       set(XARCH_VERSION_FLAGS "-m${XARCH_OS}-version-min=7.0")
     endif()
   endif()
-  execute_process(COMMAND xcodebuild -version -sdk ${XARCH_SDK} Path
+  execute_process(COMMAND xcrun -sdk ${XARCH_SDK} --show-sdk-path
       OUTPUT_VARIABLE XARCH_SYSROOT
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -251,7 +258,7 @@ set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
   IOS_DEVICE
   IOS_SIMULATOR
   IOS_SIMULATOR64
-  IOS_SYSROOT
+  IOS_SDK
 )
 
 # Standard settings.
@@ -269,12 +276,12 @@ message("CMAKE_OSX_ARCHITECTURES: ${CMAKE_OSX_ARCHITECTURES}")
 # Skip the platform compiler checks for cross compiling.
 if(IOS_UNIVERSAL)
   if(CMAKE_GENERATOR MATCHES "Xcode")
-    set(CMAKE_OSX_SYSROOT "${IOS_SYSROOT}")
+    set(CMAKE_OSX_SYSROOT "${IOS_SDK}")
   else()
     set(CMAKE_OSX_SYSROOT "" CACHE STRING "Must be empty for iOS universal builds." FORCE) # will add macOS sysroot for xcode
   endif()
 else()
-  set(CMAKE_OSX_SYSROOT "${IOS_SYSROOT}")
+  set(CMAKE_OSX_SYSROOT "${IOS_SDK}")
 endif()
 set(CMAKE_CXX_COMPILER_FORCED TRUE)
 set(CMAKE_CXX_COMPILER_WORKS TRUE)
@@ -323,10 +330,9 @@ else()
   endif()
 endif()
 set(CMAKE_FIND_ROOT_PATH 
-  ${IOS_SYSROOT}
+  ${IOS_SDK_PATH}
   ${CMAKE_PREFIX_PATH}
   CACHE string  "iOS find search path root" FORCE)
-
 # Only search the specified iOS SDK, not the remainder of the host filesystem.
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 
