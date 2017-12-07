@@ -69,6 +69,9 @@
 
 ## TODO: bitcode (ld: warning: -headerpad_max_install_names (in CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS in Darwin.cmake) is ignored when used with -bitcode_bundle (Xcode setting ENABLE_BITCODE=YES))
 ## TODO: cmake object target in xcode is in wrong type
+# TODO: CMAKE_SYSTEM_NAME to  tvos, watchos etc.
+# FIXME: duplicate
+set(CMAKE_CROSSCOMPILING TRUE)    # stop recursion
 
 execute_process(COMMAND xcodebuild -version
   OUTPUT_VARIABLE XCODE_VERSION
@@ -136,21 +139,21 @@ if (NOT DEFINED IOS_SDK_VERSION)
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
-if (NOT DEFINED CMAKE_C_COMPILER)
+if (NOT DEFINED CMAKE_C_COMPILER) #optional
   execute_process(COMMAND xcrun -sdk ${IOS_SDK} -find clang
     OUTPUT_VARIABLE CMAKE_C_COMPILER
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   message(STATUS "Using C compiler: ${CMAKE_C_COMPILER}")
 endif()
-if (NOT DEFINED CMAKE_CXX_COMPILER)
+if (NOT DEFINED CMAKE_CXX_COMPILER) #optional
   execute_process(COMMAND xcrun -sdk ${IOS_SDK} -find clang++
     OUTPUT_VARIABLE CMAKE_CXX_COMPILER
     ERROR_QUIET
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   message(STATUS "Using CXX compiler: ${CMAKE_CXX_COMPILER}")
 endif()
-if (NOT DEFINED IOS_LIBTOOL)
+if (NOT DEFINED IOS_LIBTOOL) #optional
   execute_process(COMMAND xcrun -sdk ${IOS_SDK} -find libtool
     OUTPUT_VARIABLE IOS_LIBTOOL
     ERROR_QUIET
@@ -289,8 +292,8 @@ set(CMAKE_C_COMPILER_FORCED TRUE)
 set(CMAKE_C_COMPILER_WORKS TRUE)
 set(CMAKE_C_COMPILER_ID_RUN TRUE)
 set(CMAKE_CXX_COMPILER_ID_RUN TRUE)
-set(CMAKE_C_COMPILER_ID Clang)
-set(CMAKE_CXX_COMPILER_ID Clang)
+set(CMAKE_C_COMPILER_ID AppleClang)
+set(CMAKE_CXX_COMPILER_ID AppleClang)
 
 # In order to ensure that the updated compiler flags are used in try_compile()
 # tests, we have to forcibly set them in the CMake cache, not merely set them
@@ -333,10 +336,8 @@ set(CMAKE_FIND_ROOT_PATH
   ${IOS_SDK_PATH}
   ${CMAKE_PREFIX_PATH}
   CACHE string  "iOS find search path root" FORCE)
-# Only search the specified iOS SDK, not the remainder of the host filesystem.
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH) # cmake 3.10 can not find ninja if ONLY
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
