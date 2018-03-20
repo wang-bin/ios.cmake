@@ -120,6 +120,7 @@ endif()
 if(NOT DEFINED IOS_BITCODE) # check xcode/clang version? since xcode 7
   set(IOS_BITCODE 1)
 endif()
+set(IOS_BITCODE_MARKER 0)
 # Determine the platform name and architectures for use in xcodebuild commands
 # CMAKE_OSX_SYSROOT: appletvos, appletvsimullator, watchos, watch.....
 if (IOS_DEVICE)
@@ -127,11 +128,15 @@ if (IOS_DEVICE)
   set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos")
 elseif (IOS_SIMULATOR)
   set(IOS_SDK iphonesimulator)
+# IIRC xcode<9.0 the linker reports missing bitcode for some symbols in sdk. seems fixed in new xcode
   set(IOS_BITCODE 0)
+  set(IOS_BITCODE_MARKER 1)
   set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphonesimulator")
 elseif(IOS_UNIVERSAL)
   set(IOS_SDK iphoneos)
-  set(IOS_BITCODE 0)
+  # because -fembed-bitcode and -fembed-bitcode-marker do not work with -Xarch, for old xcode, IOS_BITCODE MUST be 0
+  #set(IOS_BITCODE 0)
+  #set(IOS_BITCODE_MARKER 1)
   set(CMAKE_XCODE_EFFECTIVE_PLATFORMS "-iphoneos;-iphonesimulator")
 endif()
 
@@ -271,6 +276,8 @@ if(CMAKE_GENERATOR MATCHES "Xcode")
 else()
   if(IOS_BITCODE)
     set(BITCODE_FLAGS "-fembed-bitcode")
+  elseif(IOS_BITCODE_MARKER)
+    set(BITCODE_FLAGS "-fembed-bitcode-marker")
   endif()
   if(NOT IOS_EMBEDDED_FRAMEWORK)
   # -r: relocatable object, only static dependency is needed. Adding shared libs like libc++ and libSystem will generate warnings
